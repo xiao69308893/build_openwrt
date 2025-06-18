@@ -5,7 +5,7 @@
 
 // ===== 基础配置 =====
 // 请修改为你的GitHub仓库信息（这个可以公开）
-const GITHUB_REPO = 'xiao69308893/build-openwrt'; // 替换为你的仓库地址
+const GITHUB_REPO = 'xiao69308893/build_openwrt'; // 替换为你的仓库地址
 
 // ===== Token获取方式 =====
 // 1. 从URL参数获取（开发测试用）
