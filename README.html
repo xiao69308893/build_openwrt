@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenWrt智能编译工具 - 使用说明</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .usage-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .step-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .step-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .step-content {
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .step-content ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .step-content li {
+            margin-bottom: 8px;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+            color: #2c3e50;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .feature-item {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-left: 4px solid #fdcb6e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .warning-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .usage-steps {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ OpenWrt智能编译工具</h1>
+            <p>基于GitHub Actions的可视化固件编译平台</p>
+        </div>
+
+        <div class="usage-steps">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <div class="step-title">🚀 项目准备</div>
+                <div class="step-content">
+                    <strong>Fork项目到你的GitHub：</strong>
+                    <ul>
+                        <li>点击项目右上角的 "Fork" 按钮</li>
+                        <li>选择复制到你的GitHub账户</li>
+                        <li>等待项目复制完成</li>
+                    </ul>
+                    <br>
+                    <strong>启用GitHub Actions：</strong>
+                    <ul>
+                        <li>进入你Fork的项目</li>
+                        <li>点击 "Actions" 标签页</li>
+                        <li>点击启用工作流按钮</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <div class="step-title">⚙️ 配置设置</div>
+                <div class="step-content">
+                    <strong>修改配置文件：</strong>
+                    <div class="code-block">
+                        // 编辑 js/config-data.js
+                        const GITHUB_REPO = 'your-username/your-repo-name';
+                        const GITHUB_TOKEN = 'your-token'; // 可选
+                    </div>
+                    <strong>启用GitHub Pages（推荐）：</strong>
+                    <ul>
+                        <li>项目Settings → Pages</li>
+                        <li>Source选择 "Deploy from a branch"</li>
+                        <li>Branch选择 "main" 或 "master"</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <div class="step-title">🎯 选择源码</div>
+                <div class="step-content">
+                    <strong>支持的源码分支：</strong>
+                    <ul>
+                        <li><strong>OpenWrt官方：</strong>最新稳定版，兼容性最好</li>
+                        <li><strong>Lean's LEDE：</strong>国内热门分支，插件丰富</li>
+                        <li><strong>ImmortalWrt：</strong>增强版官方固件</li>
+                    </ul>
+                    <br>
+                    <strong>推荐选择：</strong>
+                    <ul>
+                        <li>新手用户：选择 OpenWrt官方</li>
+                        <li>国内用户：选择 Lean's LEDE</li>
+                        <li>追求稳定：选择 ImmortalWrt</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">4</div>
+                <div class="step-title">📱 选择设备</div>
+                <div class="step-content">
+                    <strong>支持的设备类型：</strong>
+                    <ul>
+                        <li><strong>路由器：</strong>小米4A千兆版、新路由3、斐讯K2P等</li>
+                        <li><strong>ARM设备：</strong>树莓派4B、NanoPi R2S等</li>
+                        <li><strong>X86设备：</strong>虚拟机、软路由、工控机</li>
+                    </ul>
+                    <br>
+                    系统会根据设备自动应用相应的优化配置。
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">5</div>
+                <div class="step-title">🔧 选择插件</div>
+                <div class="step-content">
+                    <strong>插件分类：</strong>
+                    <ul>
+                        <li><strong>网络代理：</strong>SSR Plus+、PassWall、OpenClash</li>
+                        <li><strong>网络工具：</strong>AdGuard Home、动态DNS、UPnP</li>
+                        <li><strong>系统管理：</strong>Docker CE、TTYD终端、带宽监控</li>
+                        <li><strong>多媒体：</strong>Aria2、Transmission、Samba</li>
+                    </ul>
+                    <br>
+                    <strong>智能冲突检测：</strong>
+                    <ul>
+                        <li>自动检测插件冲突和依赖关系</li>
+                        <li>根据设备存储容量提醒</li>
+                        <li>检查架构兼容性</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">6</div>
+                <div class="step-title">📊 编译监控</div>
+                <div class="step-content">
+                    <strong>实时监控功能：</strong>
+                    <ul>
+                        <li>📈 编译进度百分比显示</li>
+                        <li>📝 详细的编译日志输出</li>
+                        <li>⏱️ 编译时间统计</li>
+                        <li>📦 固件文件信息</li>
+                    </ul>
+                    <br>
+                    <strong>编译时间：</strong>
+                    <ul>
+                        <li>简单配置：30-60分钟</li>
+                        <li>复杂配置：1-3小时</li>
+                        <li>完整编译：2-4小时</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="highlight">
+            <h3>💡 使用技巧</h3>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <h4>合理选择插件</h4>
+                    <p>根据实际需求选择插件，避免选择过多导致编译失败</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <h4>优先稳定版本</h4>
+                    <p>新手建议选择稳定的源码分支和常见设备</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔍</div>
+                    <h4>查看编译日志</h4>
+                    <p>编译失败时仔细查看日志，根据错误信息调整配置</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💾</div>
+                    <h4>注意存储空间</h4>
+                    <p>根据设备Flash大小合理控制固件体积</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <div class="warning-title">⚠️ 重要提醒</div>
+            <ul>
+                <li><strong>GitHub Actions配额：</strong>免费账户每月2000分钟，请合理安排编译频率</li>
+                <li><strong>刷机风险：</strong>固件刷写有风险，请确认设备型号并备份原厂固件</li>
+                <li><strong>兼容性：</strong>首次使用建议选择知名设备和稳定源码进行测试</li>
+                <li><strong>网络环境：</strong>编译过程需要下载大量代码，请确保网络稳定</li>
+            </ul>
+        </div>
+
+        <div class="btn-group">
+            <a href="#" class="btn btn-primary" onclick="startDemo()">
+                🚀 开始体验
+            </a>
+            <a href="#" class="btn btn-secondary" onclick="showHelp()">
+                📖 查看文档
+            </a>
+            <a href="#" class="btn btn-secondary" onclick="showExamples()">
+                💡 查看示例
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 演示功能函数
+        function startDemo() {
+            alert('🎉 欢迎使用OpenWrt智能编译工具！\n\n请按照以下步骤：\n1. Fork项目到你的GitHub\n2. 启用GitHub Actions\n3. 访问项目主页开始配置\n4. 选择源码、设备和插件\n5. 开始编译并监控进度');
+        }
+
+        function showHelp() {
+            const helpText = `
+📚 常见问题解答：
+
+Q: 编译失败了怎么办？
+A: 检查配置冲突、减少插件数量、查看编译日志
+
+Q: 固件太大无法刷入？
+A: 减少插件选择或启用体积优化选项  
+
+Q: 支持哪些设备？
+A: 支持主流路由器、ARM开发板、X86软路由等
+
+Q: 编译需要多长时间？
+A: 根据配置复杂度，通常需要1-3小时
+
+Q: 如何下载编译好的固件？
+A: 编译完成后在GitHub Actions的Artifacts中下载
+            `;
+            alert(helpText);
+        }
+
+        function showExamples() {
+            const examples = `
+💡 配置示例：
+
+🏠 家用路由器推荐配置：
+- 源码：Lean's LEDE  
+- 设备：小米4A千兆版
+- 插件：SSR Plus+、AdGuard Home、UPnP
+
+🏢 办公环境推荐配置：
+- 源码：OpenWrt官方
+- 设备：X86软路由
+- 插件：多线负载均衡、带宽监控、VPN服务
+
+🎮 游戏加速推荐配置：
+- 源码：ImmortalWrt
+- 设备：网件R7800
+- 插件：游戏加速器、QoS、流量分析
+
+🏫 学习测试推荐配置：
+- 源码：OpenWrt官方
+- 设备：树莓派4B
+- 插件：Docker CE、TTYD终端、文件共享
+            `;
+            alert(examples);
+        }
+
+        // 页面加载动画
+        document.addEventListener('DOMContentLoaded', function () {
+            const cards = document.querySelectorAll('.step-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 200);
+            });
+        });
+    </script>
+</body>
+
+</html>

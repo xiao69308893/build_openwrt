@@ -1,0 +1,361 @@
+{
+    "version": "2.0.0",
+    "metadata": {
+        "generated_at": "2024-06-18T10:00:00Z",
+        "generated_by": "build-orchestrator",
+        "description": "OpenWrt 统一构建配置文件 - 解耦架构设计",
+        "schema_version": "1.0",
+        "last_updated": "2024-06-18T10:00:00Z"
+    },
+    "build": {
+        "default_source": "lede-master",
+        "default_device": "x86_64",
+        "default_plugins": [
+            "luci-theme-bootstrap"
+        ],
+        "auto_fix_enabled": true,
+        "parallel_jobs": 0,
+        "timeout_minutes": 360,
+        "retry_on_failure": true,
+        "max_retries": 2,
+        "build_log_level": "info"
+    },
+    "modules": {
+        "config_generator": {
+            "script": "script/generate-config.sh",
+            "enabled": true,
+            "auto_fix": true,
+            "interface_version": "2.0",
+            "fallback_enabled": true,
+            "timeout_seconds": 300,
+            "parameters": {
+                "validate_config": true,
+                "backup_existing": true,
+                "verbose_output": true
+            }
+        },
+        "plugin_manager": {
+            "script": "script/plugin-manager.sh",
+            "enabled": true,
+            "database_init": true,
+            "interface_version": "2.0",
+            "fallback_enabled": true,
+            "timeout_seconds": 180,
+            "parameters": {
+                "auto_conflict_check": true,
+                "compatibility_check": true,
+                "dependency_resolution": true
+            }
+        },
+        "build_fixer": {
+            "script": "script/fixes/fix-build-issues.sh",
+            "enabled": true,
+            "auto_detect": true,
+            "interface_version": "1.0",
+            "fallback_enabled": false,
+            "timeout_seconds": 600,
+            "parameters": {
+                "aggressive_fix": false,
+                "backup_before_fix": true,
+                "verify_after_fix": true
+            }
+        }
+    },
+    "devices": {
+        "x86_64": {
+            "name": "X86 64位设备",
+            "description": "通用X86 64位平台，支持虚拟机和物理机",
+            "architecture": "x86_64",
+            "target": "x86/64",
+            "default_packages": [
+                "kmod-e1000",
+                "kmod-e1000e",
+                "kmod-r8168"
+            ],
+            "recommended_plugins": [
+                "luci-app-ddns",
+                "luci-app-upnp"
+            ],
+            "resource_limits": {
+                "min_flash_mb": 16,
+                "recommended_flash_mb": 512,
+                "min_ram_mb": 64,
+                "recommended_ram_mb": 512
+            },
+            "build_config": {
+                "parallel_jobs": 0,
+                "use_ccache": true,
+                "optimize_for_size": false
+            }
+        },
+        "xiaomi_4a_gigabit": {
+            "name": "小米路由器4A千兆版",
+            "description": "小米入门级千兆路由器",
+            "architecture": "mipsel",
+            "target": "ramips/mt7621",
+            "default_packages": [
+                "kmod-mt7603",
+                "kmod-mt76x2"
+            ],
+            "recommended_plugins": [
+                "luci-app-ddns"
+            ],
+            "resource_limits": {
+                "min_flash_mb": 16,
+                "recommended_flash_mb": 16,
+                "min_ram_mb": 128,
+                "recommended_ram_mb": 128
+            },
+            "build_config": {
+                "parallel_jobs": 2,
+                "use_ccache": false,
+                "optimize_for_size": true
+            },
+            "warnings": [
+                "Flash空间有限，请谨慎选择插件",
+                "不建议安装资源密集型插件"
+            ]
+        },
+        "newifi_d2": {
+            "name": "新路由3 (Newifi D2)",
+            "description": "联发科MT7621方案路由器",
+            "architecture": "mipsel",
+            "target": "ramips/mt7621",
+            "default_packages": [
+                "kmod-mt7603",
+                "kmod-mt76x2",
+                "kmod-usb3"
+            ],
+            "recommended_plugins": [
+                "luci-app-samba4",
+                "luci-app-ddns"
+            ],
+            "resource_limits": {
+                "min_flash_mb": 32,
+                "recommended_flash_mb": 32,
+                "min_ram_mb": 256,
+                "recommended_ram_mb": 256
+            },
+            "build_config": {
+                "parallel_jobs": 4,
+                "use_ccache": true,
+                "optimize_for_size": false
+            }
+        },
+        "rpi_4b": {
+            "name": "树莓派4B",
+            "description": "ARM Cortex-A72四核处理器",
+            "architecture": "aarch64",
+            "target": "bcm27xx/bcm2711",
+            "default_packages": [
+                "bcm27xx-gpu-fw",
+                "bcm27xx-userland",
+                "kmod-usb-net-rtl8152"
+            ],
+            "recommended_plugins": [
+                "luci-app-samba4",
+                "luci-app-aria2",
+                "luci-app-ddns"
+            ],
+            "resource_limits": {
+                "min_flash_mb": 512,
+                "recommended_flash_mb": 2048,
+                "min_ram_mb": 1024,
+                "recommended_ram_mb": 4096
+            },
+            "build_config": {
+                "parallel_jobs": 4,
+                "use_ccache": true,
+                "optimize_for_size": false
+            },
+            "special_handling": {
+                "camera_patches": "disabled",
+                "gpu_acceleration": "enabled"
+            }
+        },
+        "nanopi_r2s": {
+            "name": "NanoPi R2S",
+            "description": "瑞芯微RK3328双核ARM处理器",
+            "architecture": "aarch64",
+            "target": "rockchip/armv8",
+            "default_packages": [
+                "kmod-usb-net-rtl8152"
+            ],
+            "recommended_plugins": [
+                "luci-app-ddns",
+                "luci-app-upnp"
+            ],
+            "resource_limits": {
+                "min_flash_mb": 256,
+                "recommended_flash_mb": 1024,
+                "min_ram_mb": 1024,
+                "recommended_ram_mb": 1024
+            },
+            "build_config": {
+                "parallel_jobs": 2,
+                "use_ccache": true,
+                "optimize_for_size": false
+            }
+        }
+    },
+    "sources": {
+        "lede-master": {
+            "name": "Lean's LEDE",
+            "description": "基于OpenWrt的增强版本，包含大量中国用户常用插件",
+            "repository": "https://github.com/coolsnowwolf/lede.git",
+            "branch": "master",
+            "stability": "stable",
+            "recommended": true,
+            "features": [
+                "丰富的插件生态",
+                "中文支持优秀",
+                "更新频繁"
+            ]
+        },
+        "openwrt-main": {
+            "name": "OpenWrt 官方主线",
+            "description": "OpenWrt官方主分支，最新功能和安全更新",
+            "repository": "https://github.com/openwrt/openwrt.git",
+            "branch": "main",
+            "stability": "development",
+            "recommended": false,
+            "features": [
+                "官方支持",
+                "最新内核",
+                "纯净系统"
+            ]
+        },
+        "immortalwrt-master": {
+            "name": "ImmortalWrt",
+            "description": "基于OpenWrt的fork版本，专注于中国用户需求",
+            "repository": "https://github.com/immortalwrt/immortalwrt.git",
+            "branch": "master",
+            "stability": "stable",
+            "recommended": true,
+            "features": [
+                "中国本土化",
+                "性能优化",
+                "插件丰富"
+            ]
+        },
+        "Lienol-master": {
+            "name": "Lienol's OpenWrt",
+            "description": "另一个流行的OpenWrt分支",
+            "repository": "https://github.com/Lienol/openwrt.git",
+            "branch": "main",
+            "stability": "stable",
+            "recommended": false,
+            "features": [
+                "特色插件",
+                "稳定性好"
+            ]
+        }
+    },
+    "error_handling": {
+        "auto_retry": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 30,
+        "continue_on_warning": true,
+        "rollback_on_error": false,
+        "backup_before_operation": true,
+        "error_reporting": {
+            "enabled": true,
+            "include_logs": true,
+            "include_system_info": true
+        },
+        "fallback_strategies": {
+            "config_generation": [
+                "use_minimal_config",
+                "disable_problematic_plugins",
+                "use_default_device_config"
+            ],
+            "plugin_management": [
+                "skip_conflicting_plugins",
+                "use_lightweight_alternatives",
+                "disable_optional_dependencies"
+            ],
+            "build_fixes": [
+                "clean_build_cache",
+                "reset_to_default_patches",
+                "disable_problematic_packages"
+            ]
+        }
+    },
+    "github_actions": {
+        "workflow_file": "smart-build.yml",
+        "timeout_hours": 6,
+        "artifact_retention_days": 7,
+        "parallel_builds": false,
+        "cache_enabled": true,
+        "cache_ttl_days": 7,
+        "notification": {
+            "on_success": true,
+            "on_failure": true,
+            "include_artifact_links": true,
+            "include_build_logs": false
+        },
+        "resource_management": {
+            "disk_cleanup": true,
+            "memory_optimization": true,
+            "concurrent_job_limit": 1
+        }
+    },
+    "compatibility": {
+        "minimum_bash_version": "4.0",
+        "required_tools": [
+            "jq",
+            "curl",
+            "git",
+            "wget"
+        ],
+        "optional_tools": [
+            "ccache",
+            "upx"
+        ],
+        "supported_platforms": [
+            "ubuntu-20.04",
+            "ubuntu-22.04",
+            "ubuntu-24.04"
+        ]
+    },
+    "features": {
+        "smart_build_enabled": true,
+        "universal_build_disabled": false,
+        "auto_cleanup": true,
+        "verbose_logging": true,
+        "performance_monitoring": true,
+        "resource_tracking": true,
+        "build_analytics": {
+            "enabled": true,
+            "collect_timing_data": true,
+            "collect_resource_usage": true,
+            "export_metrics": false
+        }
+    },
+    "advanced": {
+        "experimental_features": {
+            "parallel_config_generation": false,
+            "ai_assisted_debugging": false,
+            "predictive_build_optimization": false
+        },
+        "developer_options": {
+            "debug_mode": false,
+            "trace_mode": false,
+            "profile_mode": false,
+            "test_mode": false
+        },
+        "security": {
+            "strict_mode": false,
+            "verify_checksums": true,
+            "sanitize_inputs": true,
+            "restrict_network_access": false
+        }
+    },
+    "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "OpenWrt Build Configuration",
+        "description": "Configuration schema for OpenWrt build orchestrator",
+        "type": "object",
+        "version": "2.0.0"
+    }
+}

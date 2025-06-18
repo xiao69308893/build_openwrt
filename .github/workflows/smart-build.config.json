@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "build": {
+        "defaultRunner": "ubuntu-24.04",
+        "timeout": 360,
+        "retryOnFailure": true,
+        "maxRetries": 2
+    },
+    "security": {
+        "requireOwnerCheck": true,
+        "allowedTriggers": [
+            "web_build",
+            "workflow_dispatch"
+        ],
+        "restrictedBranches": []
+    },
+    "features": {
+        "smartBuildEnabled": true,
+        "universalBuildDisabled": false,
+        "autoCleanup": true,
+        "artifactRetentionDays": 7
+    },
+    "notifications": {
+        "onSuccess": true,
+        "onFailure": true,
+        "includeArtifactLinks": true
+    }
+}

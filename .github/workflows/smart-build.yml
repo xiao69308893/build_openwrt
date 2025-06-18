@@ -1,0 +1,182 @@
+#========================================================================================================================
+# OpenWrt 智能编译工作流 - 重构简化版
+# 功能: 专注于编译调度和GitHub Actions生命周期管理，具体逻辑由脚本处理
+#========================================================================================================================
+
+name: 🎯 OpenWrt智能编译
+
+on:
+  repository_dispatch:
+    types: [web_build]
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: '源码分支'
+        required: true
+        default: 'lede-master'
+        type: choice
+        options:
+          - 'lede-master'
+          - 'openwrt-main'
+          - 'immortalwrt-master'
+          - 'Lienol-master'
+      target_device:
+        description: '目标设备'
+        required: true
+        default: 'x86_64'
+        type: choice
+        options:
+          - 'x86_64'
+          - 'xiaomi_4a_gigabit'
+          - 'newifi_d2'
+          - 'rpi_4b'
+          - 'nanopi_r2s'
+      plugins:
+        description: '插件列表（逗号分隔）'
+        required: false
+        default: ''
+        type: string
+      description:
+        description: '编译描述'
+        required: false
+        default: '智能编译'
+        type: string
+
+env:
+  # 编译环境常量
+  TZ: Asia/Shanghai
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  # 构建参数准备和验证
+  prepare:
+    runs-on: ubuntu-24.04
+    name: 📋 准备构建参数
+    outputs:
+      # 标准化后的构建参数
+      build_config: ${{ steps.prepare.outputs.build_config }}
+      source_branch: ${{ steps.prepare.outputs.source_branch }}
+      target_device: ${{ steps.prepare.outputs.target_device }}
+      plugins_list: ${{ steps.prepare.outputs.plugins_list }}
+      build_tag: ${{ steps.prepare.outputs.build_tag }}
+      device_name: ${{ steps.prepare.outputs.device_name }}
+      
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🔧 准备构建参数
+        id: prepare
+        run: |
+          # 调用构建协调器进行参数准备和验证
+          chmod +x script/build-coordinator.sh
+          
+          # 构建输入参数（支持两种触发方式）
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            # Web界面触发
+            SOURCE_BRANCH="${{ github.event.client_payload.source_branch }}"
+            TARGET_DEVICE="${{ github.event.client_payload.target_device }}"
+            PLUGINS="${{ github.event.client_payload.plugins }}"
+            DESCRIPTION="${{ github.event.client_payload.description }}"
+          else
+            # 手动触发
+            SOURCE_BRANCH="${{ github.event.inputs.source_branch }}"
+            TARGET_DEVICE="${{ github.event.inputs.target_device }}"
+            PLUGINS="${{ github.event.inputs.plugins }}"
+            DESCRIPTION="${{ github.event.inputs.description }}"
+          fi
+          
+          # 调用构建协调器进行参数处理
+          ./script/build-coordinator.sh prepare \
+            --source "$SOURCE_BRANCH" \
+            --device "$TARGET_DEVICE" \
+            --plugins "$PLUGINS" \
+            --description "$DESCRIPTION" \
+            --output-env
+
+  # 主编译任务 - 简化为纯调度
+  build:
+    runs-on: ubuntu-24.04
+    needs: prepare
+    name: 🔨 OpenWrt编译
+    
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🚀 执行智能编译
+        id: build
+        run: |
+          # 设置时区
+          sudo timedatectl set-timezone "$TZ"
+          
+          # 调用构建协调器执行完整编译流程
+          chmod +x script/build-coordinator.sh
+          
+          ./script/build-coordinator.sh build \
+            --config-file "${{ needs.prepare.outputs.build_config }}" \
+            --auto-fix \
+            --verbose
+
+      - name: 📦 整理编译产物
+        id: organize
+        if: steps.build.outputs.status == 'success'
+        run: |
+          # 调用构建协调器进行产物整理
+          ./script/build-coordinator.sh organize \
+            --config-file "${{ needs.prepare.outputs.build_config }}" \
+            --device "${{ needs.prepare.outputs.target_device }}"
+
+      - name: ⬆️ 上传固件到 Artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.organize.outputs.status == 'success'
+        with:
+          name: ${{ needs.prepare.outputs.build_tag }}
+          path: ${{ steps.organize.outputs.firmware_path }}
+          retention-days: 7
+
+      - name: 📢 发布固件到 Releases
+        uses: softprops/action-gh-release@v2
+        if: steps.organize.outputs.release_tag != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.organize.outputs.release_tag }}
+          name: ${{ steps.organize.outputs.release_name }}
+          body_path: ${{ steps.organize.outputs.firmware_path }}/firmware_info.txt
+          files: |
+            ${{ steps.organize.outputs.firmware_path }}/OpenWrt_*
+            ${{ steps.organize.outputs.firmware_path }}/sha256sums.txt
+          draft: false
+          prerelease: false
+
+  # 构建完成通知（成功/失败）
+  notify:
+    runs-on: ubuntu-24.04
+    needs: [prepare, build]
+    if: always()
+    name: 📱 构建通知
+    
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 📊 生成构建报告
+        run: |
+          # 调用构建协调器生成最终报告
+          chmod +x script/build-coordinator.sh
+          
+          BUILD_STATUS="${{ needs.build.result }}"
+          
+          ./script/build-coordinator.sh notify \
+            --config-file "${{ needs.prepare.outputs.build_config }}" \
+            --build-status "$BUILD_STATUS" \
+            --run-id "${{ github.run_id }}" \
+            --repository "${{ github.repository }}"
+
+      - name: 🧹 清理旧记录
+        uses: GitRML/delete-workflow-runs@main
+        with:
+          retain_days: 7
+          keep_minimum_runs: 5
+          token: ${{ secrets.GITHUB_TOKEN }}

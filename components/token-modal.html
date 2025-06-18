@@ -1,0 +1,586 @@
+<!-- 
+  Token配置模态框组件
+  文件名: token-modal.html
+  用途: 安全的GitHub Token配置界面
+-->
+
+<!-- Token配置模态框 -->
+<div id="tokenModal" class="token-modal">
+    <div class="token-dialog">
+        <div class="token-header">
+            <h2>🔐 GitHub Token 配置</h2>
+            <p>为了正常使用编译功能，需要配置GitHub Personal Access Token</p>
+        </div>
+
+        <!-- Token状态显示 -->
+        <div id="tokenStatus" class="token-status" style="display: none;">
+            <span id="statusIcon">✅</span>
+            <span id="statusText">Token配置成功</span>
+        </div>
+
+        <!-- 安全提示 -->
+        <div class="token-security-tips">
+            <div class="security-title">🛡️ 安全提示</div>
+            <div class="security-tips">
+                • Token具有访问GitHub的权限，请妥善保管<br>
+                • 建议创建权限最小的Token（只选择必要权限）<br>
+                • 不要在公共场所或他人设备上保存Token<br>
+                • 定期更换Token以提高安全性
+            </div>
+        </div>
+
+        <!-- 配置方法选择 -->
+        <div class="token-methods">
+            <div class="token-method active" data-method="input">
+                <div class="method-icon">⌨️</div>
+                <div class="method-title">手动输入</div>
+                <div class="method-desc">直接输入GitHub Token</div>
+            </div>
+            <div class="token-method" data-method="guide">
+                <div class="method-icon">📋</div>
+                <div class="method-title">创建指南</div>
+                <div class="method-desc">查看Token创建步骤</div>
+            </div>
+        </div>
+
+        <!-- 手动输入区域 -->
+        <div id="inputSection" class="token-input-section show">
+            <div class="input-group">
+                <label for="tokenInput" class="input-label">GitHub Personal Access Token</label>
+                <input type="password" id="tokenInput" class="input-field"
+                    placeholder="请输入以 ghp_ 或 github_pat_ 开头的Token">
+                <div class="input-help">
+                    Token格式: ghp_xxxxxxxxxxxx 或 github_pat_xxxxxxxxxxxx
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="saveToken">
+                    保存到浏览器本地存储（仅在个人设备上勾选）
+                </label>
+            </div>
+        </div>
+
+        <!-- 创建指南区域 -->
+        <div id="guideSection" class="token-input-section">
+            <div class="github-steps">
+                <h4>📝 GitHub Token 创建步骤</h4>
+                <ol>
+                    <li>登录GitHub，点击右上角头像 → <code>Settings</code></li>
+                    <li>在左侧菜单中选择 <code>Developer settings</code></li>
+                    <li>选择 <code>Personal access tokens</code> → <code>Tokens (classic)</code></li>
+                    <li>点击 <code>Generate new token</code> → <code>Generate new token (classic)</code></li>
+                    <li>填写Token描述，如 "OpenWrt Builder"</li>
+                    <li>选择过期时间（建议30-90天）</li>
+                    <li>选择权限范围：
+                        <ul style="margin-top: 8px;">
+                            <li><code>repo</code> - 仓库访问权限</li>
+                            <li><code>workflow</code> - GitHub Actions权限</li>
+                            <li><code>write:packages</code> - 包发布权限（可选）</li>
+                        </ul>
+                    </li>
+                    <li>点击 <code>Generate token</code> 生成Token</li>
+                    <li>⚠️ <strong>立即复制Token</strong>（离开页面后无法再次查看）</li>
+                </ol>
+            </div>
+
+            <div class="input-group">
+                <label for="guideTokenInput" class="input-label">将创建的Token粘贴到这里</label>
+                <input type="password" id="guideTokenInput" class="input-field"
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="token-actions">
+            <button class="btn btn-secondary" onclick="window.tokenModal.close()">取消</button>
+            <button class="btn btn-primary" onclick="window.tokenModal.save()">保存配置</button>
+            <button class="btn btn-secondary" onclick="window.tokenModal.test()" style="display: none;"
+                id="testBtn">测试连接</button>
+        </div>
+    </div>
+</div>
+
+<!-- Token配置样式 -->
+<style>
+    .token-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .token-modal.show {
+        display: flex;
+    }
+
+    .token-dialog {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        animation: modalSlideIn 0.3s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px) scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .token-header {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+
+    .token-header h2 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+
+    .token-header p {
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .token-methods {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .token-method {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+
+    .token-method:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+
+    .token-method.active {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea10, #764ba210);
+    }
+
+    .method-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+
+    .method-title {
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #2c3e50;
+    }
+
+    .method-desc {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .token-input-section {
+        display: none;
+        margin-top: 20px;
+    }
+
+    .token-input-section.show {
+        display: block;
+    }
+
+    .input-group {
+        margin-bottom: 20px;
+    }
+
+    .input-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .input-field {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: 'Courier New', monospace;
+        transition: border-color 0.3s ease;
+        box-sizing: border-box;
+    }
+
+    .input-field:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .input-help {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .token-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        margin-top: 25px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .btn-secondary:hover {
+        background: #cbd5e0;
+    }
+
+    .token-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .token-status.valid {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .token-status.invalid {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .token-security-tips {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-left: 4px solid #fdcb6e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .security-title {
+        font-weight: bold;
+        color: #856404;
+        margin-bottom: 8px;
+    }
+
+    .security-tips {
+        font-size: 0.9rem;
+        color: #856404;
+        line-height: 1.5;
+    }
+
+    .github-steps {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .github-steps h4 {
+        margin-bottom: 15px;
+        color: #2c3e50;
+    }
+
+    .github-steps ol {
+        margin-left: 20px;
+    }
+
+    .github-steps li {
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
+
+    .github-steps code {
+        background: #e9ecef;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+    }
+
+    @media (max-width: 768px) {
+        .token-methods {
+            grid-template-columns: 1fr;
+        }
+
+        .token-actions {
+            flex-direction: column;
+        }
+
+        .token-dialog {
+            padding: 20px;
+            margin: 20px;
+        }
+    }
+</style>
+
+<!-- Token配置脚本 -->
+<script>
+    // Token模态框管理器
+    window.tokenModal = {
+        currentMethod: 'input',
+
+        // 初始化
+        init() {
+            this.bindEvents();
+            this.checkExistingToken();
+        },
+
+        // 绑定事件
+        bindEvents() {
+            // 方法选择事件
+            document.querySelectorAll('.token-method').forEach(method => {
+                method.addEventListener('click', () => {
+                    this.selectMethod(method.dataset.method);
+                });
+            });
+
+            // 输入框验证事件
+            document.getElementById('tokenInput').addEventListener('input', () => this.validateToken());
+            document.getElementById('guideTokenInput').addEventListener('input', () => this.validateToken());
+
+            // 关闭事件
+            document.getElementById('tokenModal').addEventListener('click', (e) => {
+                if (e.target.id === 'tokenModal') {
+                    this.close();
+                }
+            });
+        },
+
+        // 显示模态框
+        show() {
+            document.getElementById('tokenModal').classList.add('show');
+            this.selectMethod('input');
+        },
+
+        // 关闭模态框
+        close() {
+            document.getElementById('tokenModal').classList.remove('show');
+        },
+
+        // 选择配置方法
+        selectMethod(method) {
+            this.currentMethod = method;
+
+            // 更新方法选择状态
+            document.querySelectorAll('.token-method').forEach(m => {
+                m.classList.remove('active');
+            });
+            document.querySelector(`[data-method="${method}"]`).classList.add('active');
+
+            // 显示对应的输入区域
+            document.querySelectorAll('.token-input-section').forEach(section => {
+                section.classList.remove('show');
+            });
+
+            if (method === 'input') {
+                document.getElementById('inputSection').classList.add('show');
+            } else if (method === 'guide') {
+                document.getElementById('guideSection').classList.add('show');
+            }
+        },
+
+        // 验证Token
+        validateToken() {
+            const input = this.currentMethod === 'input' ?
+                document.getElementById('tokenInput') :
+                document.getElementById('guideTokenInput');
+
+            const token = input.value.trim();
+            const isValid = token.startsWith('ghp_') || token.startsWith('github_pat_');
+
+            if (token && !isValid) {
+                input.style.borderColor = '#e74c3c';
+                this.showStatus(false, 'Token格式不正确');
+            } else if (isValid) {
+                input.style.borderColor = '#27ae60';
+                this.showStatus(true, 'Token格式正确');
+                document.getElementById('testBtn').style.display = 'inline-block';
+            } else {
+                input.style.borderColor = '#e0e0e0';
+                this.hideStatus();
+                document.getElementById('testBtn').style.display = 'none';
+            }
+        },
+
+        // 显示状态
+        showStatus(isValid, message) {
+            const statusDiv = document.getElementById('tokenStatus');
+            const iconSpan = document.getElementById('statusIcon');
+            const textSpan = document.getElementById('statusText');
+
+            statusDiv.style.display = 'flex';
+            statusDiv.className = `token-status ${isValid ? 'valid' : 'invalid'}`;
+            iconSpan.textContent = isValid ? '✅' : '❌';
+            textSpan.textContent = message;
+        },
+
+        // 隐藏状态
+        hideStatus() {
+            document.getElementById('tokenStatus').style.display = 'none';
+        },
+
+        // 检查现有Token
+        checkExistingToken() {
+            const existingToken = this.getStoredToken();
+            if (existingToken) {
+                const maskedToken = existingToken.substring(0, 8) + '*'.repeat(12) + existingToken.substring(existingToken.length - 4);
+                document.getElementById('tokenInput').placeholder = `当前Token: ${maskedToken}`;
+                this.showStatus(true, '已配置Token');
+            }
+        },
+
+        // 获取存储的Token
+        getStoredToken() {
+            return localStorage.getItem('github_token') || window.GITHUB_TOKEN || null;
+        },
+
+        // 测试Token连接
+        async test() {
+            const input = this.currentMethod === 'input' ?
+                document.getElementById('tokenInput') :
+                document.getElementById('guideTokenInput');
+
+            const token = input.value.trim();
+            if (!token) return;
+
+            this.showStatus(true, '正在测试连接...');
+
+            try {
+                const response = await fetch('https://api.github.com/user', {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    this.showStatus(true, `连接成功！用户: ${userData.login}`);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                this.showStatus(false, `连接失败: ${error.message}`);
+            }
+        },
+
+        // 保存Token
+        save() {
+            const input = this.currentMethod === 'input' ?
+                document.getElementById('tokenInput') :
+                document.getElementById('guideTokenInput');
+
+            const token = input.value.trim();
+
+            if (!token) {
+                alert('请输入GitHub Token');
+                return;
+            }
+
+            if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+                alert('Token格式不正确，请检查输入');
+                return;
+            }
+
+            // 保存Token
+            const shouldSave = this.currentMethod === 'input' ?
+                document.getElementById('saveToken').checked : true;
+
+            if (shouldSave) {
+                localStorage.setItem('github_token', token);
+            }
+
+            // 设置到全局变量
+            window.GITHUB_TOKEN = token;
+
+            this.showStatus(true, 'Token配置成功！');
+
+            // 通知其他组件Token已配置
+            if (typeof onTokenConfigured === 'function') {
+                onTokenConfigured(token);
+            }
+
+            // 触发自定义事件
+            window.dispatchEvent(new CustomEvent('tokenConfigured', { detail: { token } }));
+
+            // 延迟关闭模态框
+            setTimeout(() => {
+                this.close();
+            }, 1500);
+        },
+
+        // 清除Token
+        clear() {
+            if (confirm('确定要清除Token配置吗？')) {
+                localStorage.removeItem('github_token');
+                delete window.GITHUB_TOKEN;
+
+                document.getElementById('tokenInput').value = '';
+                document.getElementById('guideTokenInput').value = '';
+                document.getElementById('tokenInput').placeholder = '请输入以 ghp_ 或 github_pat_ 开头的Token';
+
+                this.hideStatus();
+                alert('Token配置已清除');
+            }
+        }
+    };
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        window.tokenModal.init();
+    });
+</script>
