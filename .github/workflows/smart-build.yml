@@ -1,6 +1,6 @@
 #========================================================================================================================
-# OpenWrt 智能编译工作流 - 重构简化版
-# 功能: 专注于编译调度和GitHub Actions生命周期管理，具体逻辑由脚本处理
+# OpenWrt 智能编译工作流 - 合并版本
+# 功能: 将参数准备和构建合并到同一个作业中，避免文件传递问题
 #========================================================================================================================
 
 name: 🎯 OpenWrt智能编译
@@ -48,18 +48,16 @@ env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
-  # 构建参数准备和验证
-  prepare:
+  # 合并的构建任务 - 包含参数准备和编译
+  build:
     runs-on: ubuntu-24.04
-    name: 📋 准备构建参数
+    name: 🔨 OpenWrt智能编译
+    
     outputs:
-      # 标准化后的构建参数
-      build_config: ${{ steps.prepare.outputs.build_config }}
-      source_branch: ${{ steps.prepare.outputs.source_branch }}
-      target_device: ${{ steps.prepare.outputs.target_device }}
-      plugins_list: ${{ steps.prepare.outputs.plugins_list }}
+      # 输出关键信息供后续使用
       build_tag: ${{ steps.prepare.outputs.build_tag }}
       device_name: ${{ steps.prepare.outputs.device_name }}
+      firmware_path: ${{ steps.build.outputs.firmware_path }}
       
     steps:
       - name: 📥 检出代码
@@ -68,6 +66,9 @@ jobs:
       - name: 🔧 准备构建参数
         id: prepare
         run: |
+          # 设置时区
+          sudo timedatectl set-timezone "$TZ"
+          
           # 调用构建协调器进行参数准备和验证
           chmod +x script/build-coordinator.sh
           
@@ -87,96 +88,101 @@ jobs:
           fi
           
           # 调用构建协调器进行参数处理
-          ./script/build-coordinator.sh prepare \
+          CONFIG_FILE=$(./script/build-coordinator.sh prepare \
             --source "$SOURCE_BRANCH" \
             --device "$TARGET_DEVICE" \
             --plugins "$PLUGINS" \
             --description "$DESCRIPTION" \
-            --output-env
-
-  # 主编译任务 - 简化为纯调度
-  build:
-    runs-on: ubuntu-24.04
-    needs: prepare
-    name: 🔨 OpenWrt编译
-    
-    steps:
-      - name: 📥 检出代码
-        uses: actions/checkout@v4
+            --output-env)
+          
+          # 保存配置文件路径到环境变量
+          echo "BUILD_CONFIG_FILE=$CONFIG_FILE" >> $GITHUB_ENV
+          
+          # 读取并输出关键信息
+          echo "build_tag=$(jq -r '.build_info.build_tag' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "device_name=$(jq -r '.build_params.target_device' $CONFIG_FILE)" >> $GITHUB_OUTPUT
+          echo "source_branch=$(jq -r '.build_params.source_branch' $CONFIG_FILE)" >> $GITHUB_OUTPUT
 
       - name: 🚀 执行智能编译
         id: build
         run: |
-          # 设置时区
-          sudo timedatectl set-timezone "$TZ"
-          
-          # 调用构建协调器执行完整编译流程
-          chmod +x script/build-coordinator.sh
-          
+          # 直接调用构建协调器执行编译，使用环境变量中的配置文件
           ./script/build-coordinator.sh build \
-            --config-file "${{ needs.prepare.outputs.build_config }}" \
+            --config-file "$BUILD_CONFIG_FILE" \
             --auto-fix \
             --verbose
+          
+          # 输出固件路径（如果构建成功）
+          if [ -d "openwrt/bin/targets" ]; then
+            FIRMWARE_PATH=$(find openwrt/bin/targets -name "*.img" -o -name "*.bin" | head -1)
+            echo "firmware_path=$FIRMWARE_PATH" >> $GITHUB_OUTPUT
+          fi
 
       - name: 📦 整理编译产物
         id: organize
-        if: steps.build.outputs.status == 'success'
+        if: steps.build.conclusion == 'success'
         run: |
           # 调用构建协调器进行产物整理
           ./script/build-coordinator.sh organize \
-            --config-file "${{ needs.prepare.outputs.build_config }}" \
-            --device "${{ needs.prepare.outputs.target_device }}"
+            --config-file "$BUILD_CONFIG_FILE"
 
-      - name: ⬆️ 上传固件到 Artifacts
+      - name: 📤 上传固件
+        if: steps.build.conclusion == 'success'
         uses: actions/upload-artifact@v4
-        if: steps.organize.outputs.status == 'success'
         with:
-          name: ${{ needs.prepare.outputs.build_tag }}
-          path: ${{ steps.organize.outputs.firmware_path }}
+          name: OpenWrt-Firmware-${{ steps.prepare.outputs.build_tag }}
+          path: |
+            openwrt/bin/targets/*/*/*.img
+            openwrt/bin/targets/*/*/*.bin
+            openwrt/bin/targets/*/*/*.vmdk
+            openwrt/bin/targets/*/*/sha256sums
           retention-days: 7
 
-      - name: 📢 发布固件到 Releases
-        uses: softprops/action-gh-release@v2
-        if: steps.organize.outputs.release_tag != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.organize.outputs.release_tag }}
-          name: ${{ steps.organize.outputs.release_name }}
-          body_path: ${{ steps.organize.outputs.firmware_path }}/firmware_info.txt
-          files: |
-            ${{ steps.organize.outputs.firmware_path }}/OpenWrt_*
-            ${{ steps.organize.outputs.firmware_path }}/sha256sums.txt
-          draft: false
-          prerelease: false
+      - name: 📋 生成构建报告
+        if: always()
+        run: |
+          # 调用构建协调器生成通知
+          ./script/build-coordinator.sh notify \
+            --config-file "$BUILD_CONFIG_FILE" \
+            --status "${{ steps.build.conclusion }}"
 
-  # 构建完成通知（成功/失败）
-  notify:
+  # 可选：发布到Release（仅在成功时）
+  release:
     runs-on: ubuntu-24.04
-    needs: [prepare, build]
-    if: always()
-    name: 📱 构建通知
+    needs: build
+    if: needs.build.result == 'success'
+    name: 📦 发布固件
     
     steps:
       - name: 📥 检出代码
         uses: actions/checkout@v4
-
-      - name: 📊 生成构建报告
-        run: |
-          # 调用构建协调器生成最终报告
-          chmod +x script/build-coordinator.sh
-          
-          BUILD_STATUS="${{ needs.build.result }}"
-          
-          ./script/build-coordinator.sh notify \
-            --config-file "${{ needs.prepare.outputs.build_config }}" \
-            --build-status "$BUILD_STATUS" \
-            --run-id "${{ github.run_id }}" \
-            --repository "${{ github.repository }}"
-
-      - name: 🧹 清理旧记录
-        uses: GitRML/delete-workflow-runs@main
+        
+      - name: 📥 下载固件
+        uses: actions/download-artifact@v4
         with:
-          retain_days: 7
-          keep_minimum_runs: 5
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: OpenWrt-Firmware-${{ needs.build.outputs.build_tag }}
+          path: firmware/
+          
+      - name: 🏷️ 创建Release
+        uses: ncipollo/release-action@v1
+        with:
+          name: OpenWrt-${{ needs.build.outputs.build_tag }}
+          tag: ${{ needs.build.outputs.build_tag }}
+          body: |
+            ## 📦 OpenWrt固件发布
+            
+            **设备型号**: ${{ needs.build.outputs.device_name }}
+            **编译时间**: ${{ github.run_started_at }}
+            **源码分支**: ${{ github.event.inputs.source_branch || github.event.client_payload.source_branch }}
+            
+            ### 📥 下载说明
+            - 选择对应设备的固件文件
+            - 查看sha256sums验证文件完整性
+            - 按照设备刷机教程进行安装
+            
+            ### 🔗 相关链接
+            - [编译日志](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [源码仓库](https://github.com/${{ github.repository }})
+
+          draft: false
+          prerelease: false
