@@ -198,7 +198,7 @@ create_build_config() {
     BUILD_CONFIG_FILE="$BUILD_TEMP_DIR/build_config_${build_id}.json"
     
     # 创建配置文件，添加错误处理
-    if ! cat > "$BUILD_CONFIG_FILE" << EOF
+if ! cat > "$BUILD_CONFIG_FILE" << EOF
 {
   "build_info": {
     "build_id": "$build_id",
@@ -227,8 +227,8 @@ EOF
         return 1
     fi
     
-    log_success "构建配置已创建: $BUILD_CONFIG_FILE"
-    echo "$BUILD_CONFIG_FILE"
+    log_success "构建配置已创建: $BUILD_CONFIG_FILE" >&2  # 日志输出到stderr
+    echo "$BUILD_CONFIG_FILE"  # 只有文件路径输出到stdout
 }
 
 # 从配置文件读取值 - 修复 $2 未绑定变量问题
@@ -380,24 +380,20 @@ operation_prepare() {
             }
         fi
         
-        # 安全地写入环境变量，避免特殊字符问题
+        # 安全地写入环境变量，使用printf避免格式问题
         {
-            echo "build_config=$config_file"
-            echo "source_branch=$source_branch"
-            echo "target_device=$target_device"
-            echo "plugins_list=$plugins"
-            echo "build_tag=$(get_config_value '.build_info.build_tag' 'OpenWrt_Build')"
-            echo "device_name=$device_name"
+            printf "build_config=%s\n" "$config_file"
+            printf "source_branch=%s\n" "$source_branch"
+            printf "target_device=%s\n" "$target_device"
+            printf "plugins_list=%s\n" "$plugins"
+            printf "build_tag=%s\n" "$(get_config_value '.build_info.build_tag' 'OpenWrt_Build')"
+            printf "device_name=%s\n" "$device_name"
         } >> "$GITHUB_OUTPUT" || {
             log_error "写入GitHub Actions环境变量失败"
             return 1
         }
         
         log_success "环境变量输出完成"
-        log_debug "GITHUB_OUTPUT文件内容:"
-        if [ "$VERBOSE" = true ] && [ -f "$GITHUB_OUTPUT" ]; then
-            cat "$GITHUB_OUTPUT" | tail -6 || true
-        fi
     fi
     
     log_success "构建参数准备完成"
